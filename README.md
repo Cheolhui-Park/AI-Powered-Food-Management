@@ -23,6 +23,8 @@ This project addresses the global issue of food waste by providing an intelligen
 The transition from a non-CS background to building a full-stack AI application presented significant technical hurdles, especially in managing API latency and data parsing. I remained **steadfast** through intensive debugging sessions, ultimately delivering a functional prototype that proves my ability to master complex technical stacks under pressure.
 
 ---
+## 📸 Application Interface
+<img width="549" height="286" alt="KakaoTalk_20260330_025632803" src="https://github.com/user-attachments/assets/976c272f-ae75-4c06-a4a8-3f914512a38d" />
 
 ## 📫 Contact & Links
 - **Portfolio**: [Back to Notion Portfolio](https://www.notion.so/Cheolhui-Park-Materials-Science-JavaScript-Developer-32e71b46795180a5ad61cac2055045b2?source=copy_link)
