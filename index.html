@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🥕 소분 요정 | 인하 소분 마켓</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        /* 따뜻한 오렌지/베이지 톤으로 변경 */
+        :root { --karrot: #ff8a4c; --warm-bg: #fff8eb; --gold: #fde047; --eco: #4ade80; --border-color: #ffd8a8; }
+        
+        body { font-family: 'Jua', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); position: relative; overflow: hidden; color: #555; }
+        body::before { content: '🍞 🧀 🍊 🍯 🥕 🥐 🧸'; position: absolute; font-size: 3.5rem; opacity: 0.25; width: 100%; text-align: center; top: 15%; letter-spacing: 40px; z-index: 1; pointer-events: none; animation: float 6s ease-in-out infinite; }
+        
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+
+        #app-container { width: 430px; height: 95vh; background: #ffffff; border-radius: 45px; box-shadow: 0 20px 60px rgba(255, 138, 76, 0.25); display: flex; flex-direction: column; overflow: hidden; z-index: 10; border: 8px solid var(--border-color); position: relative; }
+        
+        #header { padding: 22px; text-align: center; border-bottom: 4px dashed var(--border-color); font-size: 1.5rem; color: var(--karrot); display: flex; justify-content: space-between; align-items: center; background: #fffdfa; }
+        
+        .folder-btn { background: #ffe0b2; color: #d84315; border: none; padding: 10px 16px; border-radius: 20px; font-size: 0.9rem; cursor: pointer; transition: 0.3s; font-family: 'Jua', sans-serif; box-shadow: 0 4px 10px rgba(216, 67, 21, 0.1); }
+        .folder-btn:hover { transform: scale(1.05) translateY(-2px); background: #ffcc80; }
+        
+        #ranking-board { background: #fffbeb; padding: 12px; border-bottom: 3px solid #fef08a; display: flex; align-items: center; gap: 10px; overflow-x: auto; white-space: nowrap; }
+        .rank-badge { background: white; padding: 6px 14px; border-radius: 25px; font-size: 0.9rem; border: 2px solid var(--gold); color: #b45309; box-shadow: 0 2px 5px rgba(251, 191, 36, 0.2); }
+        
+        #mini-map { height: 150px; width: 100%; border-bottom: 3px dashed var(--border-color); z-index: 5; }
+        
+        #market-box { flex: 1; padding: 15px; overflow-y: auto; background: var(--warm-bg); display: flex; flex-direction: column; gap: 15px; }
+        #market-box::-webkit-scrollbar { width: 8px; }
+        #market-box::-webkit-scrollbar-thumb { background-color: #ffb74d; border-radius: 10px; }
+        
+        .post-card { background: white; border-radius: 30px; padding: 20px; border: 3px solid #fff3e0; box-shadow: 0 8px 20px rgba(255, 138, 76, 0.08); transition: 0.3s; }
+        .post-card:hover { transform: translateY(-3px); border-color: #ffb74d; }
+        .post-card img { width: 100%; border-radius: 20px; margin-top: 12px; border: 2px solid var(--warm-bg); }
+        
+        .analysis-tip { font-size: 0.95rem; color: #444; background: #fff8e1; padding: 15px; border-radius: 20px; margin: 12px 0; border: 2px dashed #ffe082; line-height: 1.6; white-space: pre-wrap; font-family: 'Jua', sans-serif; }
+        
+        #input-area { padding: 18px; background: white; border-top: 4px dashed var(--border-color); }
+        .mode-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+        .mode-btn { flex: 1; padding: 12px; border-radius: 20px; border: 2px solid #fff3e0; cursor: pointer; font-size: 1rem; text-align: center; color: #888; background: white; user-select: none; font-family: 'Jua', sans-serif; transition: 0.3s; }
+        .mode-btn.active { background: var(--karrot); color: white; border-color: var(--karrot); box-shadow: 0 4px 15px rgba(255, 138, 76, 0.3); }
+        
+        .btn-main { background: var(--karrot); color: white; border: none; padding: 15px; border-radius: 20px; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1.1rem; transition: 0.3s; font-family: 'Jua', sans-serif; box-shadow: 0 5px 15px rgba(255, 138, 76, 0.3); }
+        .btn-main:hover { transform: scale(1.02) translateY(-2px); }
+        .btn-main:active { transform: scale(0.95); }
+        
+        .overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-card { background: white; padding: 35px 25px; border-radius: 40px; width: 320px; text-align: center; border: 5px solid var(--karrot); position: relative; box-shadow: 0 20px 50px rgba(255, 138, 76, 0.2); }
+        
+        .close-x { position: absolute; top: 18px; right: 25px; font-size: 1.8rem; cursor: pointer; color: #ffb74d; transition: 0.2s; }
+        .close-x:hover { color: #e65100; transform: rotate(90deg); }
+        
+        input, select { font-family: 'Jua', sans-serif; font-size: 1rem; color: #555; }
+        input::placeholder { color: #ccc; }
+        
+        #chat-window { height: 280px; background: #fffdfa; border-radius: 20px; margin: 15px 0; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; border: 2px solid #fff3e0; }
+        #chat-window::-webkit-scrollbar { width: 6px; }
+        #chat-window::-webkit-scrollbar-thumb { background-color: #ffb74d; border-radius: 10px; }
+        
+        .chat-bubble { padding: 12px 18px; border-radius: 25px; font-size: 1rem; max-width: 75%; line-height: 1.4; font-family: 'Jua', sans-serif; box-shadow: 0 3px 10px rgba(0,0,0,0.05); }
+        .chat-bubble.mine { background: var(--karrot); color: white; align-self: flex-end; border-bottom-right-radius: 5px; }
+        .chat-bubble.yours { background: white; color: #444; align-self: flex-start; border-bottom-left-radius: 5px; border: 2px solid #fff3e0; }
+    </style>
+</head>
+<body>
+
+<div id="intro-overlay" class="overlay">
+    <div class="modal-card">
+        <h1 style="color: var(--karrot); margin-top: 0; font-size: 2.2rem;">🧸 소분 요정</h1>
+        <p style="color: #d84315; font-size: 1.1rem;">이웃님, GPS를 켜고 닉네임을<br>알려주세요! 🧺</p>
+        <input type="text" id="user-nickname" style="width:85%; padding:14px; border-radius:20px; border:3px solid #fff3e0; margin-bottom:15px; text-align:center; outline:none;" placeholder="귀여운 닉네임 입력">
+        <select id="user-location" style="width:95%; padding:14px; border-radius:20px; border:3px solid #fff3e0; margin-bottom:15px; outline:none;">
+            <option value="이츠25 인하대후문점">🍦 이츠25 인하대후문점</option>
+            <option value="픽미픽미 쪽문점">🍦 픽미픽미 쪽문점</option>
+            <option value="ㅇㅇㅅㅋㄹ 용현점">🍦 ㅇㅇㅅㅋㄹ 용현점</option>
+            <option value="THE달달 용현5동점">🍦 THE달달 용현5동점</option>
+        </select>
+        <button type="button" class="btn-main" onclick="startApp()">위치 연동 및 마켓 입장 ✨</button>
+    </div>
+</div>
+
+<div id="folder-overlay" class="overlay" style="display: none;">
+    <div class="modal-card" style="width: 360px; max-height: 80vh; overflow-y: auto; background: #fffcf9;">
+        <span class="close-x" onclick="document.getElementById('folder-overlay').style.display='none'">×</span>
+        <h2 style="color: #d84315; margin-top: 0; font-size: 1.8rem;">📂 나의 소분 냉장고</h2>
+        <div id="my-items-list" style="text-align: left; margin-bottom: 20px;"></div>
+    </div>
+</div>
+
+<div id="chat-overlay" class="overlay" style="display: none;">
+    <div class="modal-card" style="width: 350px;">
+        <span class="close-x" onclick="document.getElementById('chat-overlay').style.display='none'">×</span>
+        <h3 style="margin-top:0; color:var(--karrot); font-size: 1.5rem;" id="chat-title">💬 소통하기</h3>
+        <div id="chat-window"></div>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="chat-input" style="flex:1; padding:12px; border-radius:20px; border:2px solid #fff3e0; outline:none;" placeholder="메시지 입력 (Enter)...">
+            <button type="button" class="btn-main" style="width:auto; margin:0; padding:12px 20px;" onclick="sendChat()">전송</button>
+        </div>
+    </div>
+</div>
+
+<div id="qr-modal" class="overlay" style="display: none;">
+    <div class="modal-card">
+        <span class="close-x" onclick="document.getElementById('qr-modal').style.display='none'">×</span>
+        <h3 style="color: #4ade80; font-size: 1.8rem;">🎉 냉장고 보관 완료!</h3>
+        <p id="qr-status-msg" style="font-size: 1.1rem; color:#555;"></p>
+        <img id="qr-img" style="width:180px; margin:15px 0; border: 4px solid #f0fdf4; border-radius: 20px;">
+        <button type="button" class="btn-main" style="background:#4ade80; box-shadow: 0 5px 15px rgba(74, 222, 128, 0.3);" onclick="document.getElementById('qr-modal').style.display='none'">닫기 완료</button>
+    </div>
+</div>
+
+<div id="app-container">
+    <div id="header"><span>🧺 인하 소분 마켓</span><button type="button" class="folder-btn" onclick="openMyFolder()">📂 내 폴더</button></div>
+    <div id="ranking-board"><div id="ranking-list" style="display: flex; gap: 8px;">랭킹 불러오는 중...</div></div>
+    <div id="mini-map"></div>
+    <div id="market-box"></div>
+    <div id="loader" style="display:none; text-align:center; padding:15px; color:var(--karrot); font-size: 1.1rem;">✨ 요정이 매칭 상대를 분석 중이에요... 🍊</div>
+    <div id="input-area">
+        <div class="mode-selector">
+            <button type="button" class="mode-btn active" id="mode-item" onclick="setMode('item')">🍎 식재료 촬영</button>
+            <button type="button" class="mode-btn" id="mode-receipt" onclick="setMode('receipt')">🧾 영수증 등록</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="itemName" placeholder="품목 (예: 소고기)" style="flex:2; padding:12px; border-radius:20px; border:2px solid #fff3e0; outline: none;">
+            <select id="category" style="flex:1; border-radius:20px; border:2px solid #fff3e0; outline: none;">
+                <option value="과일">과일 🍎</option><option value="채소">채소 🥬</option><option value="육류">육류 🥩</option>
+                <option value="수산물">수산물 🐟</option><option value="유제품">유제품 🥛</option><option value="가공식품">가공식품 🥫</option>
+                <option value="기타">기타 📦</option>
+            </select>
+        </div>
+        <input type="file" id="imageInput" style="display:none" onchange="photoSelected()">
+        <button type="button" class="btn-main" id="select-btn" style="background:#fff8eb; color:#d84315; border: 2px solid #ffe0b2; box-shadow: none;" onclick="document.getElementById('imageInput').click()">📸 갤러리에서 사진 고르기</button>
+        <button type="button" class="btn-main" id="reg-btn" onclick="uploadPost()">에코 소분 확정 등록 🥕</button>
+    </div>
+</div>
+
+<script>
+    let map, userLocation, userNickname, markersData = {}, myPosMarker;
+    let allPosts = []; 
+    let currentMode = 'item';
+    let chatTargetNickname = "";
+    let chatTargetItem = "";
+    const locations = { "이츠25 인하대후문점": [37.4520, 126.6535], "픽미픽미 쪽문점": [37.4505, 126.6570], "ㅇㅇㅅㅋㄹ 용현점": [37.4530, 126.6510], "THE달달 용현5동점": [37.4490, 126.6495] };
+
+    const BACKEND_URL = "https://tlqeuv7i44qcilkczamo673z6m0jtzfn.lambda-url.ap-northeast-2.on.aws";
+
+    document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('mode-' + mode).classList.add('active');
+        const sb = document.getElementById('select-btn');
+        if (mode === 'receipt') { sb.innerHTML = "🧾 영수증 사진 고르기"; sb.style.background = "#eff6ff"; sb.style.color = "#3b82f6"; sb.style.borderColor = "#bfdbfe"; }
+        else { sb.innerHTML = "📸 식재료 사진 고르기"; sb.style.background = "#fff8eb"; sb.style.color = "#d84315"; sb.style.borderColor = "#ffe0b2"; }
+    }
+
+    function photoSelected() { 
+        const sb = document.getElementById('select-btn');
+        sb.innerText = '✅ 사진 선택 완료!';
+        sb.style.background = '#dcfce7'; sb.style.color = '#166534'; sb.style.borderColor = '#bbf7d0';
+    }
+
+    function startApp() {
+        const nick = document.getElementById('user-nickname').value.trim();
+        if(!nick) return alert("닉네임을 입력해 주세요! 🥕");
+        userNickname = nick; userLocation = document.getElementById('user-location').value;
+        document.getElementById('intro-overlay').style.display = 'none';
+        initMapWithGPS(); loadData();
+    }
+
+    function initMapWithGPS() {
+        if(map) map.remove();
+        map = L.map('mini-map').setView(locations[userLocation], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        for(let loc in locations) { markersData[loc] = L.marker(locations[loc]).addTo(map); }
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                const myLat = pos.coords.latitude; const myLng = pos.coords.longitude;
+                if(myPosMarker) map.removeLayer(myPosMarker);
+                myPosMarker = L.circleMarker([myLat, myLng], { color: '#e11d48', fillOpacity: 0.8, radius: 8 }).addTo(map).bindPopup("<strong>📍 이웃님의 현재 위치</strong>").openPopup();
+                map.setView([myLat, myLng], 16);
+            });
+        }
+    }
+
+    async function loadData() {
+        try {
+            const res = await fetch(`${BACKEND_URL}/posts`);
+            allPosts = await res.json();
+            updateRanking(allPosts); updateMapInventory(allPosts); renderMarketFeed(allPosts);
+        } catch (e) { console.error("데이터 로드 실패"); }
+    }
+
+    function updateRanking(posts) {
+        const scores = {};
+        posts.forEach(p => { scores[p.nickname] = (scores[p.nickname] || 0) + parseFloat(p.carbonSaved || 0); });
+        const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+        document.getElementById('ranking-list').innerHTML = sorted.map((item, idx) => `<div class="rank-badge">${idx===0?'🥇':idx===1?'🥈':'🥉'} ${item[0]} (${item[1].toFixed(1)}kg)</div>`).join('');
+    }
+
+    function updateMapInventory(posts) {
+        const inv = Object.keys(locations).reduce((acc, loc) => ({...acc, [loc]: 0}), {});
+        posts.forEach(p => { if(inv[p.location] !== undefined && p.status === 'selling') inv[p.location]++; });
+        for(let loc in markersData) { markersData[loc].bindPopup(`<strong>🍦 ${loc}</strong><br>남은 소분템: <strong>${inv[loc]}</strong>개`); }
+    }
+
+    function renderMarketFeed(posts) {
+        const box = document.getElementById('market-box');
+        const selling = posts.filter(p => p.status !== 'deposited');
+        box.innerHTML = selling.map(p => {
+            const nick = (p.nickname || "이웃님").replace(/'/g, "");
+            const item = (p.itemName || "식재료").replace(/'/g, "");
+            return `
+            <div class="post-card">
+                <div style="display:flex; justify-content:space-between; font-size:1.1rem;"><strong>👤 ${p.nickname}</strong> <span style="font-size:0.9rem; color:#888;">📍 ${p.location}</span></div>
+                <div style="font-size:0.85rem; color:#fbbf24; margin-top:5px;">⭐ 신뢰 지수: ${p.trustScore || 95}점</div>
+                <img src="${p.image || ''}" onerror="this.style.display='none'">
+                <div style="margin-top: 10px; font-size: 1.2rem;"><strong>${p.itemName}</strong> <span style="color:#059669; font-weight:bold; font-size: 0.9rem; float:right;">🍃 ${p.carbonSaved}kg 절약</span></div>
+                <div class="analysis-tip">${p.analysis}</div>
+                <button type="button" class="btn-main" style="background:#ff9800; box-shadow: 0 5px 15px rgba(255, 152, 0, 0.2);" onclick="openChat('${nick}', '${item}')">💬 1:1 소통하기</button>
+            </div>`;
+        }).reverse().join('') || "<p style='text-align:center; padding:40px; color:#aaa; font-size:1.2rem;'>아직 등록된 템이 없어요!</p>";
+    }
+
+    function openMyFolder() {
+        const myList = allPosts.filter(p => p.nickname === userNickname);
+        const listDiv = document.getElementById('my-items-list');
+        listDiv.innerHTML = myList.map(p => `
+            <div style="background:white; padding:20px; border-radius:25px; margin-bottom:15px; border:3px solid #fff3e0; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+                <strong style="font-size:1.2rem; color:#d84315;">${p.itemName}</strong><br><small style="color:#888;">${new Date(p.id).toLocaleString()}</small>
+                ${p.status === 'selling' 
+                    ? `<button type="button" class="btn-main" style="padding:10px; font-size:0.9rem;" onclick="depositToFridge(${p.id}, ${p.fridgeNo})">🍦 보관 & QR전송</button>`
+                    : `<p style="color:#059669; font-weight:bold; font-size:1rem; margin-top:10px; background:#f0fdf4; padding:10px; border-radius:15px;">✅ QR 발송 (수령인: ${p.buyer})</p>`}
+            </div>`).reverse().join('') || "<p style='text-align:center; color:#aaa; font-size:1.1rem; margin-top:20px;'>올린 템이 없어요!</p>";
+        document.getElementById('folder-overlay').style.display = 'flex';
+    }
+
+    function openChat(nick, item) {
+        chatTargetNickname = nick; chatTargetItem = item;
+        document.getElementById('chat-title').innerHTML = `💬 <strong>${nick}</strong> 님과 소통`;
+        document.getElementById('chat-window').innerHTML = `<div class="chat-bubble yours">안녕하세요! 올려주신 <strong>${item}</strong> 보고 연락드렸어요. 😊</div>`;
+        document.getElementById('chat-overlay').style.display = 'flex';
+    }
+
+    async function sendChat() {
+        const input = document.getElementById('chat-input');
+        if(!input.value) return;
+        const win = document.getElementById('chat-window');
+        win.innerHTML += `<div class="chat-bubble mine">${input.value}</div>`;
+        try {
+            const res = await fetch(`${BACKEND_URL}/chat-simulate`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userMessage: input.value, targetNickname: chatTargetNickname, itemName: chatTargetItem })
+            });
+            const data = await res.json();
+            win.innerHTML += `<div class="chat-bubble yours">${data.reply}</div>`;
+        } catch (e) {
+            win.innerHTML += `<div class="chat-bubble yours" style="color:red;">네트워크 에러가 발생했습니다.</div>`;
+        }
+        input.value = ''; win.scrollTop = win.scrollHeight;
+    }
+
+    async function depositToFridge(postId, fridgeNo) {
+        if(!confirm("무인 냉장고에 보관하셨나요?")) return;
+        try {
+            const res = await fetch(`${BACKEND_URL}/deposit-item`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId, fridgeNo, buyerNickname: chatTargetNickname || "매칭 이웃님" })
+            });
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('folder-overlay').style.display = 'none';
+                document.getElementById('qr-img').src = data.qrImage;
+                document.getElementById('qr-status-msg').innerHTML = `<strong>${data.buyer}</strong> 님에게 보안 QR이 전송되었습니다! 🥕`;
+                document.getElementById('qr-modal').style.display = 'flex';
+                loadData();
+            }
+        } catch (e) { alert("발급 실패!"); }
+    }
+
+    async function uploadPost() {
+        const fileInput = document.getElementById('imageInput');
+        const file = fileInput.files[0];
+        const name = document.getElementById('itemName').value;
+        const category = document.getElementById('category').value;
+        
+        if(!file || !name) return alert("사진과 이름을 입력해 주세요!");
+        document.getElementById('loader').style.display = 'block';
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            try {
+                const res = await fetch(`${BACKEND_URL}/create-post`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemName: name, category: category, weight: 0.5, image: reader.result, location: userLocation, nickname: userNickname, mode: currentMode })
+                });
+                if(res.ok) { 
+                    alert("검수 및 매칭 분석 완료! 🏆"); 
+                    loadData(); 
+                    document.getElementById('itemName').value = ''; 
+                    setMode('item');
+                }
+            } catch (e) { 
+                alert("서버 연결에 실패했습니다."); 
+            } finally { 
+                document.getElementById('loader').style.display = 'none'; 
+            }
+        };
+    }
+</script>
+</body>
+</html>
